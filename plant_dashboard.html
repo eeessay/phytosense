@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PhytoSense — Plant Health Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;0,900;1,300&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0f0a; --surface:#111811; --surface2:#161e16; --border:#1e2b1e;
+    --green:#4ade80; --green-dim:#166534; --green-glow:rgba(74,222,128,0.15);
+    --yellow:#fbbf24; --yellow-dim:#78350f;
+    --red:#f87171; --red-dim:#7f1d1d;
+    --text:#e8f5e8; --text-dim:#6b8f6b; --text-muted:#3d5c3d;
+    --mono:'DM Mono',monospace; --serif:'Fraunces',serif; --sans:'DM Sans',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden}
+
+  /* TOP BAR */
+  .topbar{position:sticky;top:0;z-index:100;background:rgba(10,15,10,0.93);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .logo{font-family:var(--serif);font-weight:900;font-size:1.1rem;color:var(--green);flex-shrink:0}
+  .logo span{font-weight:300;color:var(--text-dim)}
+  .controls{display:flex;gap:5px;align-items:center}
+  .tgl-grp{display:flex;gap:3px;background:var(--surface2);border-radius:8px;padding:3px;border:1px solid var(--border)}
+  .tgl{padding:4px 9px;border-radius:5px;border:none;font-family:var(--sans);font-size:.67rem;font-weight:500;cursor:pointer;background:transparent;color:var(--text-dim);transition:all .2s}
+  .tgl.on{background:var(--green);color:#0a0f0a}
+  .lang{padding:4px 9px;border-radius:6px;border:1px solid var(--border);font-family:var(--mono);font-size:.67rem;cursor:pointer;background:var(--surface2);color:var(--green);transition:all .2s;font-weight:500}
+  .pdot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 7px var(--green);animation:pd 2s ease-in-out infinite;flex-shrink:0}
+  @keyframes pd{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.65)}}
+
+  /* PAGES */
+  .page{display:none;padding:14px;padding-bottom:84px;animation:fi .22s ease}
+  .page.active{display:block}
+  @keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+  /* BOTTOM NAV */
+  .bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(10,15,10,0.96);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;padding:5px 0 16px;z-index:100}
+  .ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px;cursor:pointer;border:none;background:none;color:var(--text-muted);transition:all .2s}
+  .ni.on{color:var(--green)} .ni svg{width:20px;height:20px}
+  .nl{font-size:.58rem;font-weight:500;letter-spacing:.05em;text-transform:uppercase}
+
+  /* COMMON */
+  .slbl{font-family:var(--mono);font-size:.6rem;color:var(--text-muted);letter-spacing:.15em;text-transform:uppercase;margin:18px 0 9px}
+  .slbl:first-child{margin-top:0}
+
+  /* ALERT BANNER */
+  .abanner{background:rgba(248,113,113,.07);border:1px solid var(--red);border-radius:13px;padding:12px 13px;display:flex;align-items:center;gap:10px;margin-bottom:4px;animation:bp 3s ease-in-out infinite}
+  @keyframes bp{0%,100%{border-color:var(--red)}50%{border-color:rgba(248,113,113,.25)}}
+  .aicon{font-size:1.25rem;flex-shrink:0}
+  .atitle{font-weight:600;font-size:.85rem;color:var(--red)}
+  .asub{font-size:.7rem;color:var(--text-dim);margin-top:1px}
+  .abtn{margin-left:auto;flex-shrink:0;background:var(--red);color:#fff;border:none;border-radius:8px;padding:5px 11px;font-size:.7rem;font-weight:600;cursor:pointer}
+
+  /* SUMMARY */
+  .srow{display:flex;gap:7px;margin-bottom:4px}
+  .schip{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:10px;text-align:center}
+  .cnum{font-family:var(--serif);font-size:1.65rem;font-weight:900;line-height:1}
+  .cnum.g{color:var(--green)} .cnum.y{color:var(--yellow)} .cnum.r{color:var(--red)}
+  .clbl{font-size:.6rem;color:var(--text-dim);margin-top:2px;font-weight:500}
+
+  /* STATUS CARDS */
+  .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .scard{background:var(--surface);border:1px solid var(--border);border-radius:15px;padding:14px;position:relative;overflow:hidden;cursor:pointer;transition:transform .15s}
+  .scard:active{transform:scale(.97)}
+  .scard.cr{border-color:var(--red);background:rgba(248,113,113,.04)}
+  .scard.cy{border-color:var(--yellow);background:rgba(251,191,36,.04)}
+  .scard.cg{border-color:var(--green-dim)}
+  .cglow{position:absolute;top:-18px;right:-18px;width:65px;height:65px;border-radius:50%;filter:blur(26px);opacity:.22;pointer-events:none}
+  .gr{background:var(--red)} .gy{background:var(--yellow)} .gg{background:var(--green)}
+  .cpid{font-family:var(--mono);font-size:.57rem;color:var(--text-muted);margin-bottom:6px;letter-spacing:.1em}
+  .cicn{font-size:1.6rem;margin-bottom:4px}
+  .cst{font-weight:600;font-size:.8rem;margin-bottom:1px}
+  .cr-t{color:var(--red)} .cy-t{color:var(--yellow)} .cg-t{color:var(--green)}
+  .cdur{font-family:var(--mono);font-size:.6rem;color:var(--text-dim)}
+  .cbar{margin-top:8px;height:3px;border-radius:2px;background:var(--border);overflow:hidden}
+  .cfill{height:100%;border-radius:2px}
+  .fr{background:var(--red)} .fy{background:var(--yellow)} .fg{background:var(--green)}
+
+  /* SIGNAL */
+  .psel{display:flex;gap:6px;overflow-x:auto;padding-bottom:3px;scrollbar-width:none}
+  .psel::-webkit-scrollbar{display:none}
+  .pchip{flex-shrink:0;padding:6px 13px;border-radius:20px;border:1px solid var(--border);background:var(--surface);font-family:var(--mono);font-size:.66rem;cursor:pointer;color:var(--text-dim);transition:all .2s}
+  .pchip.on{background:var(--green);color:#0a0f0a;border-color:var(--green);font-weight:500}
+  .pchip.pw{border-color:var(--yellow);color:var(--yellow)}
+  .pchip.pd{border-color:var(--red);color:var(--red)}
+  .wbox{background:var(--surface);border:1px solid var(--border);border-radius:15px;padding:14px;margin-top:4px}
+  .whdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}
+  .wtit{font-weight:600;font-size:.85rem}
+  .lbadge{display:flex;align-items:center;gap:4px;background:var(--green-glow);border:1px solid var(--green-dim);border-radius:6px;padding:3px 8px;font-family:var(--mono);font-size:.6rem;color:var(--green)}
+  canvas{width:100%;border-radius:7px;display:block}
+  .strow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:11px}
+  .stbox{background:var(--surface2);border-radius:9px;padding:8px;text-align:center}
+  .stv{font-family:var(--mono);font-size:.9rem;font-weight:500;color:var(--green)}
+  .stl{font-size:.58rem;color:var(--text-muted);margin-top:2px}
+  .sv-w{color:var(--yellow)} .sv-d{color:var(--red)}
+
+  /* AUDIO */
+  .aviz{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px 16px;text-align:center}
+  .arings{position:relative;width:120px;height:120px;margin:0 auto 16px}
+  .ring{position:absolute;border-radius:50%;border:1px solid var(--green);top:50%;left:50%;transform:translate(-50%,-50%);opacity:0}
+  .ring.pl{animation:rx 2.5s ease-out infinite}
+  .ring:nth-child(2){animation-delay:.8s}.ring:nth-child(3){animation-delay:1.6s}
+  @keyframes rx{0%{width:38px;height:38px;opacity:.8}100%{width:120px;height:120px;opacity:0}}
+  .acore{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 26px rgba(74,222,128,.4);transition:all .2s;z-index:1}
+  .acore:active{transform:translate(-50%,-50%) scale(.91)}
+  .acore svg{width:20px;height:20px;color:#0a0f0a}
+  .astit{font-family:var(--serif);font-weight:600;font-size:1rem;margin-bottom:3px}
+  .assub{font-size:.7rem;color:var(--text-dim)}
+  .mscroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:3px;scrollbar-width:none}
+  .mscroll::-webkit-scrollbar{display:none}
+  .mcard{flex-shrink:0;width:118px;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:12px;cursor:pointer;transition:all .2s}
+  .mcard.on{border-color:var(--green);background:var(--green-glow)}
+  .mname{font-weight:600;font-size:.76rem;margin-bottom:3px}
+  .msub{font-size:.63rem;color:var(--text-dim);line-height:1.4}
+  .ppanel{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:14px}
+  .slrow{display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-dim);margin-bottom:6px}
+  .slv{color:var(--green);font-family:var(--mono)}
+  input[type=range]{width:100%;-webkit-appearance:none;height:3px;border-radius:2px;background:var(--border);outline:none;margin-bottom:16px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--green);cursor:pointer;box-shadow:0 0 6px rgba(74,222,128,.5)}
+
+  /* HISTORY */
+  .tfil{display:flex;gap:5px;margin-bottom:4px}
+  .tbtn{padding:5px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text-dim);font-family:var(--mono);font-size:.66rem;cursor:pointer;transition:all .2s}
+  .tbtn.on{background:var(--surface2);color:var(--green);border-color:var(--green)}
+  .elist{display:flex;flex-direction:column;gap:6px}
+  .eitem{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:all .15s}
+  .eitem:active{transform:scale(.98)}
+  .eitem.er{border-left:3px solid var(--red)}
+  .eitem.ey{border-left:3px solid var(--yellow)}
+  .eitem.eg{border-left:3px solid var(--green)}
+  .edot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .dr{background:var(--red);box-shadow:0 0 5px var(--red)}
+  .dy{background:var(--yellow);box-shadow:0 0 5px var(--yellow)}
+  .dg{background:var(--green);box-shadow:0 0 5px var(--green)}
+  .ebody{flex:1}
+  .etit{font-weight:600;font-size:.8rem;margin-bottom:2px}
+  .emeta{font-family:var(--mono);font-size:.6rem;color:var(--text-dim)}
+  .econf{font-family:var(--mono);font-size:.65rem;padding:2px 7px;border-radius:5px}
+  .ecr{background:rgba(248,113,113,.1);color:var(--red)}
+  .ecy{background:rgba(251,191,36,.1);color:var(--yellow)}
+  .ecg{background:rgba(74,222,128,.1);color:var(--green)}
+
+  /* TECH */
+  .tpanel{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:13px;margin-bottom:8px}
+  .thdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}
+  .ttit{font-family:var(--mono);font-size:.72rem;color:var(--green)}
+  .badge{font-family:var(--mono);font-size:.58rem;padding:2px 7px;border-radius:4px}
+  .bok{background:var(--green-glow);color:var(--green);border:1px solid var(--green-dim)}
+  .bwn{background:rgba(251,191,36,.1);color:var(--yellow);border:1px solid var(--yellow-dim)}
+  .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .fitem{background:var(--surface2);border-radius:7px;padding:8px}
+  .fname{font-family:var(--mono);font-size:.56rem;color:var(--text-muted);margin-bottom:3px}
+  .fval{font-family:var(--mono);font-size:.84rem;font-weight:500}
+  .fvg{color:var(--green)} .fvy{color:var(--yellow)} .fvr{color:var(--red)}
+  .snrbar{height:5px;border-radius:3px;background:var(--border);margin-top:6px;overflow:hidden}
+  .snrfill{height:100%;border-radius:3px;background:linear-gradient(to right,var(--green-dim),var(--green))}
+
+  /* MODAL */
+  .moverlay{position:fixed;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);z-index:200;display:none;align-items:flex-end}
+  .moverlay.op{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:22px 22px 0 0;padding:20px;width:100%;max-width:430px;margin:0 auto;animation:su .28s ease}
+  @keyframes su{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .mhandle{width:36px;height:3px;background:var(--border);border-radius:2px;margin:0 auto 16px}
+  .mtit{font-family:var(--serif);font-size:1.2rem;font-weight:900;margin-bottom:4px}
+  .msub2{font-size:.76rem;color:var(--text-dim);margin-bottom:16px}
+  .drow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+  .dk{font-size:.73rem;color:var(--text-dim)} .dv{font-family:var(--mono);font-size:.73rem}
+  .macts{display:flex;gap:8px;margin-top:16px}
+  .bc{flex:1;padding:12px;background:var(--red);border:none;border-radius:11px;color:#fff;font-weight:600;font-size:.85rem;cursor:pointer}
+  .bf{flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:11px;color:var(--text-dim);font-weight:600;font-size:.85rem;cursor:pointer}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">Phyto<span>Sense</span></div>
+  <div class="controls">
+    <div class="tgl-grp">
+      <button class="tgl on" onclick="setRole('farmer',this)" data-en="Farmer" data-zh="农民">Farmer</button>
+      <button class="tgl" onclick="setRole('agro',this)" data-en="Agronomist" data-zh="农技员">Agronomist</button>
+    </div>
+    <button class="lang" id="langBtn" onclick="toggleLang()">EN</button>
+    <div class="pdot"></div>
+  </div>
+</div>
+
+<!-- ════════ PAGE: OVERVIEW ════════ -->
+<div class="page active" id="page-overview">
+
+  <div class="abanner" id="abanner">
+    <div class="aicon">🚨</div>
+    <div>
+      <div class="atitle" data-en="Pest activity detected" data-zh="检测到虫害活动">Pest activity detected</div>
+      <div class="asub" data-en="Plant C-02 · 23 min ago · 81% confidence" data-zh="植株 C-02 · 23分钟前 · 置信度 81%">Plant C-02 · 23 min ago · 81% confidence</div>
+    </div>
+    <button class="abtn" onclick="openModal('pest')" data-en="View" data-zh="查看">View</button>
+  </div>
+
+  <div class="slbl" data-en="Greenhouse Summary" data-zh="温室总览">Greenhouse Summary</div>
+  <div class="srow">
+    <div class="schip"><div class="cnum g">6</div><div class="clbl" data-en="Healthy" data-zh="健康">Healthy</div></div>
+    <div class="schip"><div class="cnum y">2</div><div class="clbl" data-en="Warning" data-zh="预警">Warning</div></div>
+    <div class="schip"><div class="cnum r">1</div><div class="clbl" data-en="Critical" data-zh="严重">Critical</div></div>
+  </div>
+
+  <div class="slbl" data-en="All Plants" data-zh="所有植株">All Plants</div>
+  <div class="sgrid">
+
+    <div class="scard cr" onclick="openModal('pest')">
+      <div class="cglow gr"></div>
+      <div class="cpid">C-02 · TOMATO</div>
+      <div class="cicn">🪲</div>
+      <div class="cst cr-t" data-en="Pest Alert" data-zh="虫害预警">Pest Alert</div>
+      <div class="cdur">23 min · 81%</div>
+      <div class="cbar"><div class="cfill fr" style="width:81%"></div></div>
+    </div>
+
+    <div class="scard cy" onclick="openModal('water')">
+      <div class="cglow gy"></div>
+      <div class="cpid">A-05 · PEPPER</div>
+      <div class="cicn">💧</div>
+      <div class="cst cy-t" data-en="Water Stress" data-zh="缺水胁迫">Water Stress</div>
+      <div class="cdur">1h 12m · 67%</div>
+      <div class="cbar"><div class="cfill fy" style="width:67%"></div></div>
+    </div>
+
+    <div class="scard cy">
+      <div class="cglow gy"></div>
+      <div class="cpid">B-01 · TOMATO</div>
+      <div class="cicn">💧</div>
+      <div class="cst cy-t" data-en="Mild Stress" data-zh="轻度胁迫">Mild Stress</div>
+      <div class="cdur">34 min · 52%</div>
+      <div class="cbar"><div class="cfill fy" style="width:52%"></div></div>
+    </div>
+
+    <div class="scard cg">
+      <div class="cglow gg"></div>
+      <div class="cpid">A-01 · TOMATO</div>
+      <div class="cicn">🌿</div>
+      <div class="cst cg-t" data-en="Healthy" data-zh="健康">Healthy</div>
+      <div class="cdur" data-en="Stable 4h+" data-zh="稳定 4h+">Stable 4h+</div>
+      <div class="cbar"><div class="cfill fg" style="width:95%"></div></div>
+    </div>
+
+    <div class="scard cg">
+      <div class="cpid">A-02 · TOMATO</div>
+      <div class="cicn">🌿</div>
+      <div class="cst cg-t" data-en="Healthy" data-zh="健康">Healthy</div>
+      <div class="cdur" data-en="Stable 6h+" data-zh="稳定 6h+">Stable 6h+</div>
+      <div class="cbar"><div class="cfill fg" style="width:92%"></div></div>
+    </div>
+
+    <div class="scard cg">
+      <div class="cpid">B-03 · PEPPER</div>
+      <div class="cicn">🌿</div>
+      <div class="cst cg-t" data-en="Healthy" data-zh="健康">Healthy</div>
+      <div class="cdur" data-en="Stable 2h+" data-zh="稳定 2h+">Stable 2h+</div>
+      <div class="cbar"><div class="cfill fg" style="width:88%"></div></div>
+    </div>
+
+  </div>
+
+  <!-- Agronomist SNR panel -->
+  <div id="techOv" style="display:none">
+    <div class="slbl" data-en="Signal Quality — All Electrodes" data-zh="信号质量 — 所有电极">Signal Quality — All Electrodes</div>
+    <div class="tpanel">
+      <div class="thdr">
+        <div class="ttit" data-en="SNR Overview" data-zh="信噪比总览">SNR Overview</div>
+        <div class="badge bok" data-en="6 / 9 Good" data-zh="6 / 9 良好">6 / 9 Good</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-dim);margin-bottom:3px"><span>C-02 E1</span><span style="color:var(--red);font-family:var(--mono)">18 dB ⚠</span></div>
+          <div class="snrbar"><div class="snrfill" style="width:36%;background:var(--red)"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-dim);margin-bottom:3px"><span>A-05 E1</span><span style="color:var(--yellow);font-family:var(--mono)">27 dB</span></div>
+          <div class="snrbar"><div class="snrfill" style="width:54%;background:var(--yellow)"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-dim);margin-bottom:3px"><span>A-01 E1</span><span style="color:var(--green);font-family:var(--mono)">41 dB</span></div>
+          <div class="snrbar"><div class="snrfill" style="width:82%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ PAGE: SIGNAL ════════ -->
+<div class="page" id="page-signal">
+
+  <div class="slbl" data-en="Select Plant" data-zh="选择植株">Select Plant</div>
+  <div class="psel">
+    <div class="pchip pd on" onclick="selPlant(this,'C-02','danger')">C-02 🪲</div>
+    <div class="pchip pw" onclick="selPlant(this,'A-05','warn')">A-05 💧</div>
+    <div class="pchip" onclick="selPlant(this,'A-01','ok')">A-01</div>
+    <div class="pchip" onclick="selPlant(this,'A-02','ok')">A-02</div>
+    <div class="pchip pw" onclick="selPlant(this,'B-01','warn')">B-01</div>
+    <div class="pchip" onclick="selPlant(this,'B-03','ok')">B-03</div>
+  </div>
+
+  <div class="wbox">
+    <div class="whdr">
+      <div class="wtit" id="wTit">C-02 · Live Signal</div>
+      <div class="lbadge"><div class="pdot" style="width:5px;height:5px"></div><span data-en="LIVE" data-zh="实时">LIVE</span></div>
+    </div>
+    <canvas id="wCanvas" height="105"></canvas>
+    <div class="strow">
+      <div class="stbox"><div class="stv" id="stV">+42.3</div><div class="stl" data-en="mV Current" data-zh="当前电压">mV Current</div></div>
+      <div class="stbox"><div class="stv sv-d" id="stS">7.2</div><div class="stl" data-en="Spikes/min" data-zh="尖峰/分钟">Spikes/min</div></div>
+      <div class="stbox"><div class="stv" id="stQ">18dB</div><div class="stl" data-en="Signal SNR" data-zh="信号质量">Signal SNR</div></div>
+    </div>
+  </div>
+
+  <div id="techSig" style="display:none">
+    <div class="slbl" data-en="Extracted Features" data-zh="提取特征">Extracted Features</div>
+    <div class="tpanel">
+      <div class="fgrid">
+        <div class="fitem"><div class="fname" data-en="PEAK-TO-PEAK" data-zh="峰峰值">PEAK-TO-PEAK</div><div class="fval fvr">89.4 mV</div></div>
+        <div class="fitem"><div class="fname" data-en="STD DEV" data-zh="标准差">STD DEV</div><div class="fval fvy">12.7 mV</div></div>
+        <div class="fitem"><div class="fname" data-en="LOW FREQ PWR" data-zh="低频能量">LOW FREQ PWR</div><div class="fval fvg">0.34</div></div>
+        <div class="fitem"><div class="fname" data-en="HIGH FREQ PWR" data-zh="高频能量">HIGH FREQ PWR</div><div class="fval fvr">2.81</div></div>
+        <div class="fitem"><div class="fname" data-en="TREND SLOPE" data-zh="趋势斜率">TREND SLOPE</div><div class="fval fvr">+0.08</div></div>
+        <div class="fitem"><div class="fname" data-en="SPIKE INTERVAL" data-zh="尖峰间隔">SPIKE INTERVAL</div><div class="fval fvr">8.3 s</div></div>
+      </div>
+    </div>
+    <div class="slbl" data-en="FFT Spectrum" data-zh="FFT 频谱">FFT Spectrum</div>
+    <div class="tpanel"><canvas id="fftC" height="70"></canvas></div>
+  </div>
+</div>
+
+<!-- ════════ PAGE: AUDIO ════════ -->
+<div class="page" id="page-audio">
+
+  <div class="slbl" data-en="Sound Monitoring" data-zh="声音监听">Sound Monitoring</div>
+  <div class="aviz">
+    <div class="arings">
+      <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+      <div class="acore" onclick="toggleAudio()" id="aBtn">
+        <svg viewBox="0 0 24 24" fill="currentColor" id="aIcon"><path d="M8 5v14l11-7z"/></svg>
+      </div>
+    </div>
+    <div class="astit" id="aTitle" data-en="Tap to listen" data-zh="点击收听">Tap to listen</div>
+    <div class="assub" id="aSub">C-02 · <span data-en="Frequency Mapping" data-zh="频率映射">Frequency Mapping</span></div>
+  </div>
+
+  <div class="slbl" data-en="Conversion Method" data-zh="转换方式">Conversion Method</div>
+  <div class="mscroll">
+    <div class="mcard on" onclick="selMethod(this)">
+      <div class="mname" data-en="Freq Map" data-zh="频率映射">Freq Map</div>
+      <div class="msub" data-en="Voltage → pitch. Stress raises tone." data-zh="电压映射音调，胁迫时音调升高。">Voltage → pitch. Stress raises tone.</div>
+    </div>
+    <div class="mcard" onclick="selMethod(this)">
+      <div class="mname" data-en="Amplitude" data-zh="幅值映射">Amplitude</div>
+      <div class="msub" data-en="Signal strength → volume." data-zh="信号强度映射音量。">Signal strength → volume.</div>
+    </div>
+    <div class="mcard" onclick="selMethod(this)">
+      <div class="mname" data-en="Event Click" data-zh="事件触发">Event Click</div>
+      <div class="msub" data-en="Each spike triggers a click." data-zh="每次尖峰触发点击声。">Each spike triggers a click.</div>
+    </div>
+    <div class="mcard" onclick="selMethod(this)">
+      <div class="mname" data-en="FM Synth" data-zh="FM合成">FM Synth</div>
+      <div class="msub" data-en="Modulated carrier wave." data-zh="调频载波，音色更丰富。">Modulated carrier wave.</div>
+    </div>
+  </div>
+
+  <div class="slbl" data-en="Audio Parameters" data-zh="音频参数">Audio Parameters</div>
+  <div class="ppanel">
+    <div class="slrow"><span data-en="Pitch Range (Hz)" data-zh="音调范围 (Hz)">Pitch Range (Hz)</span><span class="slv" id="pVal">200 – 1200</span></div>
+    <input type="range" min="100" max="2000" value="1200" oninput="document.getElementById('pVal').textContent='200–'+this.value">
+    <div class="slrow"><span data-en="Playback Speed" data-zh="播放速度">Playback Speed</span><span class="slv" id="spVal">1×</span></div>
+    <input type="range" min="1" max="100" value="1" oninput="document.getElementById('spVal').textContent=this.value+'×'">
+    <div class="slrow"><span data-en="Volume" data-zh="音量">Volume</span><span class="slv" id="vVal">70%</span></div>
+    <input type="range" min="0" max="100" value="70" oninput="document.getElementById('vVal').textContent=this.value+'%'">
+  </div>
+</div>
+
+<!-- ════════ PAGE: HISTORY ════════ -->
+<div class="page" id="page-history">
+
+  <div class="slbl" data-en="Time Range" data-zh="时间范围">Time Range</div>
+  <div class="tfil">
+    <button class="tbtn on" data-en="24h" data-zh="24小时">24h</button>
+    <button class="tbtn" onclick="setT(this)" data-en="7d" data-zh="7天">7d</button>
+    <button class="tbtn" onclick="setT(this)" data-en="30d" data-zh="30天">30d</button>
+    <button class="tbtn" onclick="setT(this)" data-en="All" data-zh="全部">All</button>
+  </div>
+
+  <div class="slbl" data-en="Event Log" data-zh="事件日志">Event Log</div>
+  <div class="elist">
+    <div class="eitem er" onclick="openModal('pest')">
+      <div class="edot dr"></div>
+      <div class="ebody">
+        <div class="etit" data-en="🪲 Pest Activity — C-02" data-zh="🪲 虫害活动 — C-02">🪲 Pest Activity — C-02</div>
+        <div class="emeta" data-en="Today · 14:37 · 23 min ongoing" data-zh="今天 · 14:37 · 持续23分钟">Today · 14:37 · 23 min ongoing</div>
+      </div>
+      <div class="econf ecr">81%</div>
+    </div>
+    <div class="eitem ey">
+      <div class="edot dy"></div>
+      <div class="ebody">
+        <div class="etit" data-en="💧 Water Stress — A-05" data-zh="💧 缺水胁迫 — A-05">💧 Water Stress — A-05</div>
+        <div class="emeta" data-en="Today · 13:25 · 1h 12m ongoing" data-zh="今天 · 13:25 · 持续1h 12m">Today · 13:25 · 1h 12m ongoing</div>
+      </div>
+      <div class="econf ecy">67%</div>
+    </div>
+    <div class="eitem eg">
+      <div class="edot dg"></div>
+      <div class="ebody">
+        <div class="etit" data-en="✅ False alarm cleared — B-02" data-zh="✅ 误报已清除 — B-02">✅ False alarm cleared — B-02</div>
+        <div class="emeta" data-en="Today · 11:02 · Marked by farmer" data-zh="今天 · 11:02 · 农民标记">Today · 11:02 · Marked by farmer</div>
+      </div>
+      <div class="econf ecg">—</div>
+    </div>
+    <div class="eitem ey">
+      <div class="edot dy"></div>
+      <div class="ebody">
+        <div class="etit" data-en="💧 Water Stress — C-01" data-zh="💧 缺水胁迫 — C-01">💧 Water Stress — C-01</div>
+        <div class="emeta" data-en="Yesterday · 16:44 · Resolved 18:10" data-zh="昨天 · 16:44 · 18:10已解决">Yesterday · 16:44 · Resolved 18:10</div>
+      </div>
+      <div class="econf ecy">74%</div>
+    </div>
+    <div class="eitem er">
+      <div class="edot dr"></div>
+      <div class="ebody">
+        <div class="etit" data-en="🪲 Pest Activity — A-03" data-zh="🪲 虫害活动 — A-03">🪲 Pest Activity — A-03</div>
+        <div class="emeta" data-en="Yesterday · 09:15 · Confirmed · Treated" data-zh="昨天 · 09:15 · 已确认 · 已处理">Yesterday · 09:15 · Confirmed · Treated</div>
+      </div>
+      <div class="econf ecr">93%</div>
+    </div>
+    <div class="eitem eg">
+      <div class="edot dg"></div>
+      <div class="ebody">
+        <div class="etit" data-en="📡 Signal noise — pump start" data-zh="📡 信号噪声 — 水泵启动">📡 Signal noise — pump start</div>
+        <div class="emeta" data-en="2 days ago · 08:00 · Auto-filtered" data-zh="2天前 · 08:00 · 自动过滤">2 days ago · 08:00 · Auto-filtered</div>
+      </div>
+      <div class="econf ecg">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bnav">
+  <button class="ni on" onclick="goPage('overview',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+    <span class="nl" data-en="Overview" data-zh="总览">Overview</span>
+  </button>
+  <button class="ni" onclick="goPage('signal',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span class="nl" data-en="Signal" data-zh="信号">Signal</span>
+  </button>
+  <button class="ni" onclick="goPage('audio',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13M9 18c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-2c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z"/></svg>
+    <span class="nl" data-en="Audio" data-zh="声音">Audio</span>
+  </button>
+  <button class="ni" onclick="goPage('history',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <span class="nl" data-en="History" data-zh="历史">History</span>
+  </button>
+</div>
+
+<!-- MODAL -->
+<div class="moverlay" id="mOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtit" id="mTit"></div>
+    <div class="msub2" id="mSub2"></div>
+    <div id="mRows"></div>
+    <div class="macts">
+      <button class="bc" onclick="closeModal()" id="bConf">✓ <span data-en="Confirm — I'll check it" data-zh="确认 — 我去检查">Confirm — I'll check it</span></button>
+      <button class="bf" onclick="markFalse()" id="bFalse">✗ <span data-en="False alarm" data-zh="误报">False alarm</span></button>
+    </div>
+  </div>
+</div>
+
+<script>
+let lang='en', role='farmer', playing=false;
+let curPlant='C-02', curState='danger';
+let wOff=0, rafId=null;
+let actx=null, osc2=null, gn=null, aInt=null;
+
+// LANG
+function toggleLang(){
+  lang=lang==='en'?'zh':'en';
+  document.getElementById('langBtn').textContent=lang==='en'?'EN':'中';
+  applyLang();
+}
+function applyLang(){
+  document.querySelectorAll('[data-en]').forEach(el=>{
+    if(el.children.length===0||el.tagName==='SPAN')
+      el.textContent=el.getAttribute('data-'+lang);
+  });
+  updWTitle(); updASub();
+}
+function T(e,z){return lang==='en'?e:z}
+
+// ROLE
+function setRole(r,btn){
+  role=r;
+  document.querySelectorAll('.tgl').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const show=r==='agro';
+  ['techOv','techSig'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=show?'block':'none';});
+  if(show&&document.getElementById('page-signal').classList.contains('active'))setTimeout(drawFFT,50);
+}
+
+// NAV
+function goPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(b=>b.classList.remove('on'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('on');
+  if(id==='signal'){setTimeout(()=>{initWave();if(role==='agro')drawFFT();},50);}
+}
+
+// PLANT
+function selPlant(el,name,state){
+  document.querySelectorAll('.pchip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  curPlant=name; curState=state;
+  updWTitle(); updASub();
+  const sv=document.getElementById('stV'),ss=document.getElementById('stS'),sq=document.getElementById('stQ');
+  if(state==='danger'){sv.textContent='+42.3';ss.textContent='7.2';ss.className='stv sv-d';sq.textContent='18dB';}
+  else if(state==='warn'){sv.textContent='+18.1';ss.textContent='1.8';ss.className='stv sv-w';sq.textContent='27dB';}
+  else{sv.textContent='+31.5';ss.textContent='0.3';ss.className='stv';sq.textContent='41dB';}
+  if(rafId)cancelAnimationFrame(rafId);
+  initWave();
+  if(role==='agro')setTimeout(drawFFT,50);
+}
+function updWTitle(){const e=document.getElementById('wTit');if(e)e.textContent=curPlant+' · '+T('Live Signal','实时信号');}
+function updASub(){
+  const e=document.getElementById('aSub');
+  const mc=document.querySelector('.mcard.on');
+  const mn=mc?mc.querySelector('.mname').textContent:T('Freq Map','频率映射');
+  if(e)e.textContent=T('Plant','植株')+' '+curPlant+' · '+mn;
+}
+
+// WAVEFORM
+function initWave(){
+  const c=document.getElementById('wCanvas'); if(!c)return;
+  const dpr=window.devicePixelRatio||1;
+  const w=c.parentElement.clientWidth-28;
+  c.width=w*dpr;c.height=105*dpr;c.style.width=w+'px';c.style.height='105px';
+  const ctx=c.getContext('2d');ctx.scale(dpr,dpr);
+  drawWave(ctx,w,105);
+}
+function drawWave(ctx,w,h){
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#0d140d';ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle='#182818';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){ctx.beginPath();ctx.moveTo(0,i*h/4);ctx.lineTo(w,i*h/4);ctx.stroke();}
+  const col=curState==='danger'?'#f87171':curState==='warn'?'#fbbf24':'#4ade80';
+  ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.shadowBlur=5;ctx.shadowColor=col;
+  ctx.beginPath();
+  for(let x=0;x<w;x++){
+    const t=(x+wOff)/w*Math.PI*8;
+    let y=Math.sin(t)*17+Math.sin(t*2.1+1)*6;
+    if(curState==='danger'&&Math.sin(t*5.9)>0.91)y+=Math.sin(t*18)*24;
+    else if(curState==='warn'){y*=0.42;y+=Math.sin(t*0.4)*9;}
+    x===0?ctx.moveTo(x,h/2+y):ctx.lineTo(x,h/2+y);
+  }
+  ctx.stroke();ctx.shadowBlur=0;
+  wOff+=1.4;
+  rafId=requestAnimationFrame(()=>drawWave(ctx,w,h));
+}
+
+// FFT
+function drawFFT(){
+  const c=document.getElementById('fftC'); if(!c||!c.parentElement)return;
+  const dpr=window.devicePixelRatio||1;
+  const w=c.parentElement.clientWidth-26;
+  c.width=w*dpr;c.height=70*dpr;c.style.width=w+'px';c.style.height='70px';
+  const ctx=c.getContext('2d');ctx.scale(dpr,dpr);
+  ctx.fillStyle='#0d140d';ctx.fillRect(0,0,w,70);
+  const bins=28,bw=w/bins-1.2;
+  for(let i=0;i<bins;i++){
+    const f=i/bins;
+    let ht=Math.random()*7+4;
+    if(curState==='danger')ht+=f>0.5?36*Math.random():11*Math.random();
+    else ht+=16*(1-f)*Math.random();
+    ht=Math.min(ht,64);
+    ctx.fillStyle=(curState==='danger'&&f>0.5)?'#f87171':'#4ade80';
+    ctx.globalAlpha=0.72;
+    ctx.fillRect(i*(bw+1.2),70-ht,bw,ht);
+  }
+  ctx.globalAlpha=1;
+  if(curState==='danger'){
+    ctx.fillStyle='rgba(248,113,113,0.08)';ctx.fillRect(w*0.5,0,w*0.5,70);
+    ctx.fillStyle='#f87171';ctx.font='8px DM Mono';
+    ctx.fillText(T('HIGH FREQ','高频区域'),w*0.52,10);
+  }
+}
+
+// AUDIO
+function toggleAudio(){
+  playing=!playing;
+  const icon=document.getElementById('aIcon'),title=document.getElementById('aTitle');
+  const rings=document.querySelectorAll('.ring'),core=document.getElementById('aBtn');
+  if(playing){
+    icon.innerHTML='<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+    title.textContent=T('Listening to ','正在收听 ')+curPlant+'…';
+    rings.forEach(r=>r.classList.add('pl'));
+    core.style.background='var(--red)';core.style.boxShadow='0 0 26px rgba(248,113,113,0.45)';
+    startAudio();
+  } else {
+    icon.innerHTML='<path d="M8 5v14l11-7z"/>';
+    title.textContent=T('Tap to listen','点击收听');
+    rings.forEach(r=>r.classList.remove('pl'));
+    core.style.background='var(--green)';core.style.boxShadow='0 0 26px rgba(74,222,128,0.4)';
+    stopAudio();
+  }
+}
+function startAudio(){
+  try{
+    actx=new(window.AudioContext||window.webkitAudioContext)();
+    osc2=actx.createOscillator();gn=actx.createGain();
+    osc2.connect(gn);gn.connect(actx.destination);
+    osc2.type='sine';osc2.frequency.setValueAtTime(400,actx.currentTime);
+    gn.gain.setValueAtTime(0.26,actx.currentTime);osc2.start();
+    let t=0;
+    aInt=setInterval(()=>{
+      if(!playing)return;t+=0.1;
+      const base=curState==='danger'?560:curState==='warn'?300:250;
+      const jit=curState==='danger'?170:35;
+      osc2.frequency.setTargetAtTime(base+Math.sin(t)*75+Math.random()*jit,actx.currentTime,0.08);
+    },100);
+  } catch(e){document.getElementById('aTitle').textContent=T('Audio unavailable','不支持音频');}
+}
+function stopAudio(){
+  if(osc2){try{osc2.stop();}catch(e){}osc2=null;}
+  if(actx){try{actx.close();}catch(e){}actx=null;}
+  if(aInt){clearInterval(aInt);aInt=null;}
+}
+function selMethod(el){
+  document.querySelectorAll('.mcard').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');updASub();
+}
+
+// MODAL DATA
+const MD={
+  pest:{
+    en:{t:'🪲 Pest Activity Detected',s:'Plant C-02 · Tomato · Greenhouse A',
+      r:[['Confidence','81%','var(--red)'],['Duration','23 min (ongoing)',''],['Spike rate','7.2 / min',''],['Signal SNR','18 dB — Degraded','var(--yellow)'],['Suggested action','Inspect leaf undersides','']]},
+    zh:{t:'🪲 检测到虫害活动',s:'植株 C-02 · 番茄 · A温室',
+      r:[['置信度','81%','var(--red)'],['持续时间','23分钟（持续中）',''],['尖峰速率','7.2次/分钟',''],['信号质量','18 dB — 已降级','var(--yellow)'],['建议操作','检查叶片背面','']]}
+  },
+  water:{
+    en:{t:'💧 Water Stress Detected',s:'Plant A-05 · Pepper · Greenhouse A',
+      r:[['Confidence','67%','var(--yellow)'],['Duration','1h 12m (ongoing)',''],['Signal trend','Amplitude declining',''],['Last watered','18h ago','var(--yellow)'],['Suggested action','Water immediately','']]},
+    zh:{t:'💧 检测到缺水胁迫',s:'植株 A-05 · 辣椒 · A温室',
+      r:[['置信度','67%','var(--yellow)'],['持续时间','1小时12分钟（持续中）',''],['信号趋势','幅值持续下降',''],['上次浇水','18小时前','var(--yellow)'],['建议操作','立即浇水','']]}
+  }
+};
+
+function openModal(type){
+  const d=MD[type][lang];
+  document.getElementById('mTit').textContent=d.t;
+  document.getElementById('mSub2').textContent=d.s;
+  document.getElementById('mRows').innerHTML=d.r.map(r=>
+    `<div class="drow"><span class="dk">${r[0]}</span><span class="dv"${r[2]?' style="color:'+r[2]+'"':''}>${r[1]}</span></div>`
+  ).join('');
+  // update button labels
+  document.getElementById('bConf').innerHTML='✓ '+T("Confirm — I'll check it","确认 — 我去检查");
+  document.getElementById('bFalse').innerHTML='✗ '+T('False alarm','误报');
+  document.getElementById('mOverlay').classList.add('op');
+}
+function closeModal(e){
+  if(!e||e.target===document.getElementById('mOverlay'))document.getElementById('mOverlay').classList.remove('op');
+}
+function markFalse(){
+  document.getElementById('mOverlay').classList.remove('op');
+  const b=document.querySelector('.abanner');
+  if(b){b.style.opacity='.4';
+    b.querySelector('.atitle').textContent=T('✓ Marked as false alarm','✓ 已标记为误报');
+    b.querySelector('.asub').textContent=T('Thank you — this improves accuracy','感谢反馈，有助于提升准确率');
+  }
+}
+function setT(btn){document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
+
+window.addEventListener('load',()=>{setTimeout(initWave,80);});
+window.addEventListener('resize',()=>{
+  if(document.getElementById('page-signal').classList.contains('active')){
+    if(rafId)cancelAnimationFrame(rafId);initWave();if(role==='agro')drawFFT();
+  }
+});
+</script>
+</body>
+</html>
