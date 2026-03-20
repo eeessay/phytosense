@@ -2,9 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>PhytoSense — Plant Health Monitor</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;0,900;1,300&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PhytoSense">
+<meta name="theme-color" content="#0a0f0a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>PhytoSense</title>
 <style>
   :root {
     --bg:#0a0f0a; --surface:#111811; --surface2:#161e16; --border:#1e2b1e;
@@ -12,7 +18,7 @@
     --yellow:#fbbf24; --yellow-dim:#78350f;
     --red:#f87171; --red-dim:#7f1d1d;
     --text:#e8f5e8; --text-dim:#6b8f6b; --text-muted:#3d5c3d;
-    --mono:'DM Mono',monospace; --serif:'Fraunces',serif; --sans:'DM Sans',sans-serif;
+    --mono:'SF Mono','Fira Code','Courier New',monospace; --serif:Georgia,'Times New Roman',serif; --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;max-width:430px;margin:0 auto;overflow-x:hidden}
@@ -189,77 +195,62 @@
 <!-- ════════ PAGE: OVERVIEW ════════ -->
 <div class="page active" id="page-overview">
 
-  <div class="abanner" id="abanner">
-    <div class="aicon">🚨</div>
-    <div>
-      <div class="atitle" data-en="Pest activity detected" data-zh="检测到虫害活动">Pest activity detected</div>
-      <div class="asub" data-en="Plant C-02 · 23 min ago · 81% confidence" data-zh="植株 C-02 · 23分钟前 · 置信度 81%">Plant C-02 · 23 min ago · 81% confidence</div>
+  <!-- CSV UPLOAD PANEL -->
+  <div id="uploadPanel" style="background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:14px;margin-bottom:12px">
+    <div style="font-family:var(--mono);font-size:.6rem;color:var(--text-muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:10px">Load Sensor Data</div>
+    <div style="display:flex;flex-direction:column;gap:7px" id="uploadSlots">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:9px" id="lblRaw">
+        <span style="font-size:.9rem">⚡</span>
+        <span style="font-size:.72rem;color:var(--text-dim);flex:1" id="lblRawTxt">RAW_SIGNALS — not loaded</span>
+        <input type="file" accept=".csv" style="display:none" onchange="loadCSV(this,'raw')">
+        <span style="font-family:var(--mono);font-size:.6rem;color:var(--green);border:1px solid var(--green-dim);border-radius:5px;padding:2px 7px">Browse</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:9px" id="lblWater">
+        <span style="font-size:.9rem">💧</span>
+        <span style="font-size:.72rem;color:var(--text-dim);flex:1" id="lblWaterTxt">WATER_STATUS — not loaded</span>
+        <input type="file" accept=".csv" style="display:none" onchange="loadCSV(this,'water')">
+        <span style="font-family:var(--mono);font-size:.6rem;color:var(--green);border:1px solid var(--green-dim);border-radius:5px;padding:2px 7px">Browse</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:9px" id="lblActivity">
+        <span style="font-size:.9rem">🌿</span>
+        <span style="font-size:.72rem;color:var(--text-dim);flex:1" id="lblActivityTxt">PLANT_ACTIVITY — not loaded</span>
+        <input type="file" accept=".csv" style="display:none" onchange="loadCSV(this,'activity')">
+        <span style="font-family:var(--mono);font-size:.6rem;color:var(--green);border:1px solid var(--green-dim);border-radius:5px;padding:2px 7px">Browse</span>
+      </label>
     </div>
-    <button class="abtn" onclick="openModal('pest')" data-en="View" data-zh="查看">View</button>
+    <div id="uploadStatus" style="margin-top:10px;display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <span style="font-family:var(--mono);font-size:.62rem;color:var(--text-dim)" id="replayTime">—</span>
+        <div style="display:flex;gap:6px">
+          <button onclick="toggleReplay()" id="replayBtn" style="font-family:var(--mono);font-size:.6rem;padding:3px 10px;border-radius:6px;border:1px solid var(--green);background:var(--green-glow);color:var(--green);cursor:pointer">▶ Play</button>
+          <button onclick="resetReplay()" style="font-family:var(--mono);font-size:.6rem;padding:3px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);cursor:pointer">↺ Reset</button>
+        </div>
+      </div>
+      <div style="height:3px;border-radius:2px;background:var(--border);overflow:hidden">
+        <div id="replayProgress" style="height:100%;border-radius:2px;background:var(--green);width:0%"></div>
+      </div>
+    </div>
   </div>
 
-  <div class="slbl" data-en="Greenhouse Summary" data-zh="温室总览">Greenhouse Summary</div>
+  <div class="abanner" id="abanner" style="display:none"></div>
+
+  <div class="slbl">Sensor Summary</div>
   <div class="srow">
-    <div class="schip"><div class="cnum g">6</div><div class="clbl" data-en="Healthy" data-zh="健康">Healthy</div></div>
-    <div class="schip"><div class="cnum y">2</div><div class="clbl" data-en="Warning" data-zh="预警">Warning</div></div>
-    <div class="schip"><div class="cnum r">1</div><div class="clbl" data-en="Critical" data-zh="严重">Critical</div></div>
+    <div class="schip"><div class="cnum g" id="sumHealthy">—</div><div class="clbl">Healthy</div></div>
+    <div class="schip"><div class="cnum y" id="sumWarn">—</div><div class="clbl">Warning</div></div>
+    <div class="schip"><div class="cnum r" id="sumCritical">—</div><div class="clbl">Critical</div></div>
   </div>
 
-  <div class="slbl" data-en="All Plants" data-zh="所有植株">All Plants</div>
-  <div class="sgrid">
-
-    <div class="scard cr" onclick="openModal('pest')">
-      <div class="cglow gr"></div>
-      <div class="cpid">C-02 · TOMATO</div>
-      <div class="cicn">🪲</div>
-      <div class="cst cr-t" data-en="Pest Alert" data-zh="虫害预警">Pest Alert</div>
-      <div class="cdur">23 min · 81%</div>
-      <div class="cbar"><div class="cfill fr" style="width:81%"></div></div>
+  <div class="slbl">Active Sensors</div>
+  <div class="sgrid" id="plantGrid">
+    <div class="scard cg" id="card-25072519" style="grid-column:1/-1">
+      <div class="cglow gg" id="card-glow"></div>
+      <div class="cpid">25072519 · CHOY SUM · 50% water</div>
+      <div class="cicn" id="card-icon">🌿</div>
+      <div class="cst cg-t" id="card-status">Awaiting data</div>
+      <div class="cdur" id="card-dur">—</div>
+      <div class="cbar"><div class="cfill fg" id="card-fill" style="width:0%"></div></div>
     </div>
-
-    <div class="scard cy" onclick="openModal('water')">
-      <div class="cglow gy"></div>
-      <div class="cpid">A-05 · PEPPER</div>
-      <div class="cicn">💧</div>
-      <div class="cst cy-t" data-en="Water Stress" data-zh="缺水胁迫">Water Stress</div>
-      <div class="cdur">1h 12m · 67%</div>
-      <div class="cbar"><div class="cfill fy" style="width:67%"></div></div>
-    </div>
-
-    <div class="scard cy">
-      <div class="cglow gy"></div>
-      <div class="cpid">B-01 · TOMATO</div>
-      <div class="cicn">💧</div>
-      <div class="cst cy-t" data-en="Mild Stress" data-zh="轻度胁迫">Mild Stress</div>
-      <div class="cdur">34 min · 52%</div>
-      <div class="cbar"><div class="cfill fy" style="width:52%"></div></div>
-    </div>
-
-    <div class="scard cg">
-      <div class="cglow gg"></div>
-      <div class="cpid">A-01 · TOMATO</div>
-      <div class="cicn">🌿</div>
-      <div class="cst cg-t" data-en="Healthy" data-zh="健康">Healthy</div>
-      <div class="cdur" data-en="Stable 4h+" data-zh="稳定 4h+">Stable 4h+</div>
-      <div class="cbar"><div class="cfill fg" style="width:95%"></div></div>
-    </div>
-
-    <div class="scard cg">
-      <div class="cpid">A-02 · TOMATO</div>
-      <div class="cicn">🌿</div>
-      <div class="cst cg-t" data-en="Healthy" data-zh="健康">Healthy</div>
-      <div class="cdur" data-en="Stable 6h+" data-zh="稳定 6h+">Stable 6h+</div>
-      <div class="cbar"><div class="cfill fg" style="width:92%"></div></div>
-    </div>
-
-    <div class="scard cg">
-      <div class="cpid">B-03 · PEPPER</div>
-      <div class="cicn">🌿</div>
-      <div class="cst cg-t" data-en="Healthy" data-zh="健康">Healthy</div>
-      <div class="cdur" data-en="Stable 2h+" data-zh="稳定 2h+">Stable 2h+</div>
-      <div class="cbar"><div class="cfill fg" style="width:88%"></div></div>
-    </div>
-
   </div>
 
   <!-- Agronomist SNR panel -->
@@ -272,16 +263,8 @@
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <div>
-          <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-dim);margin-bottom:3px"><span>C-02 E1</span><span style="color:var(--red);font-family:var(--mono)">18 dB ⚠</span></div>
-          <div class="snrbar"><div class="snrfill" style="width:36%;background:var(--red)"></div></div>
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-dim);margin-bottom:3px"><span>A-05 E1</span><span style="color:var(--yellow);font-family:var(--mono)">27 dB</span></div>
-          <div class="snrbar"><div class="snrfill" style="width:54%;background:var(--yellow)"></div></div>
-        </div>
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-dim);margin-bottom:3px"><span>A-01 E1</span><span style="color:var(--green);font-family:var(--mono)">41 dB</span></div>
-          <div class="snrbar"><div class="snrfill" style="width:82%"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--text-dim);margin-bottom:3px"><span>25072519 E1</span><span style="color:var(--green);font-family:var(--mono)" id="snrVal">— dB</span></div>
+          <div class="snrbar"><div class="snrfill" id="snrFill" style="width:0%"></div></div>
         </div>
       </div>
     </div>
@@ -291,26 +274,21 @@
 <!-- ════════ PAGE: SIGNAL ════════ -->
 <div class="page" id="page-signal">
 
-  <div class="slbl" data-en="Select Plant" data-zh="选择植株">Select Plant</div>
+  <div class="slbl">Active Sensor</div>
   <div class="psel">
-    <div class="pchip pd on" onclick="selPlant(this,'C-02','danger')">C-02 🪲</div>
-    <div class="pchip pw" onclick="selPlant(this,'A-05','warn')">A-05 💧</div>
-    <div class="pchip" onclick="selPlant(this,'A-01','ok')">A-01</div>
-    <div class="pchip" onclick="selPlant(this,'A-02','ok')">A-02</div>
-    <div class="pchip pw" onclick="selPlant(this,'B-01','warn')">B-01</div>
-    <div class="pchip" onclick="selPlant(this,'B-03','ok')">B-03</div>
+    <div class="pchip on" id="chip-25072519" onclick="selPlant(this,'25072519',curState)">25072519</div>
   </div>
 
   <div class="wbox">
     <div class="whdr">
-      <div class="wtit" id="wTit">C-02 · Live Signal</div>
+      <div class="wtit" id="wTit">25072519 · Live Signal</div>
       <div class="lbadge"><div class="pdot" style="width:5px;height:5px"></div><span data-en="LIVE" data-zh="实时">LIVE</span></div>
     </div>
     <canvas id="wCanvas" height="105"></canvas>
     <div class="strow">
       <div class="stbox"><div class="stv" id="stV">+42.3</div><div class="stl" data-en="mV Current" data-zh="当前电压">mV Current</div></div>
-      <div class="stbox"><div class="stv sv-d" id="stS">7.2</div><div class="stl" data-en="Spikes/min" data-zh="尖峰/分钟">Spikes/min</div></div>
-      <div class="stbox"><div class="stv" id="stQ">18dB</div><div class="stl" data-en="Signal SNR" data-zh="信号质量">Signal SNR</div></div>
+      <div class="stbox"><div class="stv sv-d" id="stS">7.2</div><div class="stl">Water Status</div></div>
+      <div class="stbox"><div class="stv" id="stQ">18dB</div><div class="stl">Plant Activity</div></div>
     </div>
   </div>
 
@@ -334,7 +312,7 @@
 <!-- ════════ PAGE: AUDIO ════════ -->
 <div class="page" id="page-audio">
 
-  <div class="slbl" data-en="Sound Monitoring" data-zh="声音监听">Sound Monitoring</div>
+  <div class="slbl" data-en="Alert Sound" data-zh="报警声音">Alert Sound</div>
   <div class="aviz">
     <div class="arings">
       <div class="ring"></div><div class="ring"></div><div class="ring"></div>
@@ -342,38 +320,45 @@
         <svg viewBox="0 0 24 24" fill="currentColor" id="aIcon"><path d="M8 5v14l11-7z"/></svg>
       </div>
     </div>
-    <div class="astit" id="aTitle" data-en="Tap to listen" data-zh="点击收听">Tap to listen</div>
-    <div class="assub" id="aSub">C-02 · <span data-en="Frequency Mapping" data-zh="频率映射">Frequency Mapping</span></div>
+    <div class="astit" id="aTitle">Enable Alerts</div>
+    <div class="assub" id="aSub">Tap to activate — silent until event detected</div>
   </div>
 
-  <div class="slbl" data-en="Conversion Method" data-zh="转换方式">Conversion Method</div>
-  <div class="mscroll">
-    <div class="mcard on" onclick="selMethod(this)">
-      <div class="mname" data-en="Freq Map" data-zh="频率映射">Freq Map</div>
-      <div class="msub" data-en="Voltage → pitch. Stress raises tone." data-zh="电压映射音调，胁迫时音调升高。">Voltage → pitch. Stress raises tone.</div>
+  <div class="slbl">Alert Status</div>
+  <div id="audioStatus" style="background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:14px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div id="audioStatusDot" style="width:8px;height:8px;border-radius:50%;background:var(--text-muted);flex-shrink:0"></div>
+      <div id="audioStatusText" style="font-size:.78rem;color:var(--text-dim)">Alerts disabled</div>
     </div>
-    <div class="mcard" onclick="selMethod(this)">
-      <div class="mname" data-en="Amplitude" data-zh="幅值映射">Amplitude</div>
-      <div class="msub" data-en="Signal strength → volume." data-zh="信号强度映射音量。">Signal strength → volume.</div>
-    </div>
-    <div class="mcard" onclick="selMethod(this)">
-      <div class="mname" data-en="Event Click" data-zh="事件触发">Event Click</div>
-      <div class="msub" data-en="Each spike triggers a click." data-zh="每次尖峰触发点击声。">Each spike triggers a click.</div>
-    </div>
-    <div class="mcard" onclick="selMethod(this)">
-      <div class="mname" data-en="FM Synth" data-zh="FM合成">FM Synth</div>
-      <div class="msub" data-en="Modulated carrier wave." data-zh="调频载波，音色更丰富。">Modulated carrier wave.</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--yellow)">
+        <div>
+          <div style="font-size:.75rem;font-weight:600;color:var(--yellow)">⚠️ Warning</div>
+          <div style="font-size:.62rem;color:var(--text-dim);margin-top:1px">3 short tones · 520 Hz · plays once</div>
+        </div>
+        <button onclick="testWarningSound()" style="font-family:var(--mono);font-size:.6rem;padding:3px 9px;border-radius:6px;border:1px solid var(--yellow);background:rgba(251,191,36,.1);color:var(--yellow);cursor:pointer">Test</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--red)">
+        <div>
+          <div style="font-size:.75rem;font-weight:600;color:var(--red)">🚨 Critical</div>
+          <div style="font-size:.62rem;color:var(--text-dim);margin-top:1px">Repeating dual tone · 880/660 Hz · loops until confirmed</div>
+        </div>
+        <button onclick="testCriticalSound()" style="font-family:var(--mono);font-size:.6rem;padding:3px 9px;border-radius:6px;border:1px solid var(--red);background:rgba(248,113,113,.1);color:var(--red);cursor:pointer">Test</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--green)">
+        <div>
+          <div style="font-size:.75rem;font-weight:600;color:var(--green)">✅ Released</div>
+          <div style="font-size:.62rem;color:var(--text-dim);margin-top:1px">Single descending tone · 440→220 Hz</div>
+        </div>
+        <button onclick="testReleasedSound()" style="font-family:var(--mono);font-size:.6rem;padding:3px 9px;border-radius:6px;border:1px solid var(--green);background:var(--green-glow);color:var(--green);cursor:pointer">Test</button>
+      </div>
     </div>
   </div>
 
-  <div class="slbl" data-en="Audio Parameters" data-zh="音频参数">Audio Parameters</div>
+  <div class="slbl">Volume</div>
   <div class="ppanel">
-    <div class="slrow"><span data-en="Pitch Range (Hz)" data-zh="音调范围 (Hz)">Pitch Range (Hz)</span><span class="slv" id="pVal">200 – 1200</span></div>
-    <input type="range" min="100" max="2000" value="1200" oninput="document.getElementById('pVal').textContent='200–'+this.value">
-    <div class="slrow"><span data-en="Playback Speed" data-zh="播放速度">Playback Speed</span><span class="slv" id="spVal">1×</span></div>
-    <input type="range" min="1" max="100" value="1" oninput="document.getElementById('spVal').textContent=this.value+'×'">
-    <div class="slrow"><span data-en="Volume" data-zh="音量">Volume</span><span class="slv" id="vVal">70%</span></div>
-    <input type="range" min="0" max="100" value="70" oninput="document.getElementById('vVal').textContent=this.value+'%'">
+    <div class="slrow"><span>Alert Volume</span><span class="slv" id="vVal">70%</span></div>
+    <input type="range" min="0" max="100" value="70" oninput="alertVolume=this.value/100;document.getElementById('vVal').textContent=this.value+'%'">
   </div>
 </div>
 
@@ -389,55 +374,8 @@
   </div>
 
   <div class="slbl" data-en="Event Log" data-zh="事件日志">Event Log</div>
-  <div class="elist">
-    <div class="eitem er" onclick="openModal('pest')">
-      <div class="edot dr"></div>
-      <div class="ebody">
-        <div class="etit" data-en="🪲 Pest Activity — C-02" data-zh="🪲 虫害活动 — C-02">🪲 Pest Activity — C-02</div>
-        <div class="emeta" data-en="Today · 14:37 · 23 min ongoing" data-zh="今天 · 14:37 · 持续23分钟">Today · 14:37 · 23 min ongoing</div>
-      </div>
-      <div class="econf ecr">81%</div>
-    </div>
-    <div class="eitem ey">
-      <div class="edot dy"></div>
-      <div class="ebody">
-        <div class="etit" data-en="💧 Water Stress — A-05" data-zh="💧 缺水胁迫 — A-05">💧 Water Stress — A-05</div>
-        <div class="emeta" data-en="Today · 13:25 · 1h 12m ongoing" data-zh="今天 · 13:25 · 持续1h 12m">Today · 13:25 · 1h 12m ongoing</div>
-      </div>
-      <div class="econf ecy">67%</div>
-    </div>
-    <div class="eitem eg">
-      <div class="edot dg"></div>
-      <div class="ebody">
-        <div class="etit" data-en="✅ False alarm cleared — B-02" data-zh="✅ 误报已清除 — B-02">✅ False alarm cleared — B-02</div>
-        <div class="emeta" data-en="Today · 11:02 · Marked by farmer" data-zh="今天 · 11:02 · 农民标记">Today · 11:02 · Marked by farmer</div>
-      </div>
-      <div class="econf ecg">—</div>
-    </div>
-    <div class="eitem ey">
-      <div class="edot dy"></div>
-      <div class="ebody">
-        <div class="etit" data-en="💧 Water Stress — C-01" data-zh="💧 缺水胁迫 — C-01">💧 Water Stress — C-01</div>
-        <div class="emeta" data-en="Yesterday · 16:44 · Resolved 18:10" data-zh="昨天 · 16:44 · 18:10已解决">Yesterday · 16:44 · Resolved 18:10</div>
-      </div>
-      <div class="econf ecy">74%</div>
-    </div>
-    <div class="eitem er">
-      <div class="edot dr"></div>
-      <div class="ebody">
-        <div class="etit" data-en="🪲 Pest Activity — A-03" data-zh="🪲 虫害活动 — A-03">🪲 Pest Activity — A-03</div>
-        <div class="emeta" data-en="Yesterday · 09:15 · Confirmed · Treated" data-zh="昨天 · 09:15 · 已确认 · 已处理">Yesterday · 09:15 · Confirmed · Treated</div>
-      </div>
-      <div class="econf ecr">93%</div>
-    </div>
-    <div class="eitem eg">
-      <div class="edot dg"></div>
-      <div class="ebody">
-        <div class="etit" data-en="📡 Signal noise — pump start" data-zh="📡 信号噪声 — 水泵启动">📡 Signal noise — pump start</div>
-        <div class="emeta" data-en="2 days ago · 08:00 · Auto-filtered" data-zh="2天前 · 08:00 · 自动过滤">2 days ago · 08:00 · Auto-filtered</div>
-      </div>
-      <div class="econf ecg">—</div>
-    </div>
+  <div class="elist" id="elist">
+    <div style="padding:20px;text-align:center;color:var(--text-muted);font-size:.75rem" id="historyEmpty">No events yet — load CSV and press Play</div>
   </div>
 </div>
 
@@ -477,7 +415,7 @@
 
 <script>
 let lang='en', role='farmer', playing=false;
-let curPlant='C-02', curState='danger';
+let curPlant='25072519', curState='ok';
 let wOff=0, rafId=null;
 let actx=null, osc2=null, gn=null, aInt=null;
 
@@ -520,11 +458,11 @@ function selPlant(el,name,state){
   document.querySelectorAll('.pchip').forEach(c=>c.classList.remove('on'));
   el.classList.add('on');
   curPlant=name; curState=state;
-  updWTitle(); updASub();
+  updWTitle();
+  // Stats come from live replay data; only update label style
   const sv=document.getElementById('stV'),ss=document.getElementById('stS'),sq=document.getElementById('stQ');
-  if(state==='danger'){sv.textContent='+42.3';ss.textContent='7.2';ss.className='stv sv-d';sq.textContent='18dB';}
-  else if(state==='warn'){sv.textContent='+18.1';ss.textContent='1.8';ss.className='stv sv-w';sq.textContent='27dB';}
-  else{sv.textContent='+31.5';ss.textContent='0.3';ss.className='stv';sq.textContent='41dB';}
+  if(sv) sv.className='stv'+(state==='danger'?' sv-d':state==='warn'?' sv-w':'');
+  if(ss) { ss.textContent = 'WS'; ss.className='stv'+(state==='danger'?' sv-d':state==='warn'?' sv-w':''); }
   if(rafId)cancelAnimationFrame(rafId);
   initWave();
   if(role==='agro')setTimeout(drawFFT,50);
@@ -547,6 +485,11 @@ function initWave(){
   drawWave(ctx,w,105);
 }
 function drawWave(ctx,w,h){
+  if (waveBuffer.length >= 2) {
+    drawWaveFromBuffer(ctx,w,h);
+    rafId=requestAnimationFrame(()=>drawWave(ctx,w,h));
+    return;
+  }
   ctx.clearRect(0,0,w,h);
   ctx.fillStyle='#0d140d';ctx.fillRect(0,0,w,h);
   ctx.strokeStyle='#182818';ctx.lineWidth=1;
@@ -594,63 +537,150 @@ function drawFFT(){
 }
 
 // AUDIO
-function toggleAudio(){
-  playing=!playing;
-  const icon=document.getElementById('aIcon'),title=document.getElementById('aTitle');
-  const rings=document.querySelectorAll('.ring'),core=document.getElementById('aBtn');
-  if(playing){
-    icon.innerHTML='<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
-    title.textContent=T('Listening to ','正在收听 ')+curPlant+'…';
-    rings.forEach(r=>r.classList.add('pl'));
-    core.style.background='var(--red)';core.style.boxShadow='0 0 26px rgba(248,113,113,0.45)';
-    startAudio();
+// ════════ AUDIO ENGINE ════════
+let alertVolume = 0.7;
+let alertsEnabled = false;
+let criticalLoopTimer = null;
+
+function toggleAudio() {
+  alertsEnabled = !alertsEnabled;
+  const icon = document.getElementById('aIcon');
+  const title = document.getElementById('aTitle');
+  const sub = document.getElementById('aSub');
+  const rings = document.querySelectorAll('.ring');
+  const core = document.getElementById('aBtn');
+  const dot = document.getElementById('audioStatusDot');
+  const statusText = document.getElementById('audioStatusText');
+
+  if (alertsEnabled) {
+    // Init AudioContext on user gesture
+    if (!actx) {
+      try { actx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e) { alertsEnabled = false; title.textContent = 'Audio unavailable'; return; }
+    }
+    icon.innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+    title.textContent = 'Alerts Active';
+    sub.textContent = 'Monitoring — silent until event detected';
+    rings.forEach(r => r.classList.add('pl'));
+    core.style.background = 'var(--green)';
+    core.style.boxShadow = '0 0 26px rgba(74,222,128,0.5)';
+    dot.style.background = 'var(--green)';
+    dot.style.boxShadow = '0 0 6px var(--green)';
+    statusText.textContent = 'Listening — no active alerts';
+    statusText.style.color = 'var(--green)';
   } else {
-    icon.innerHTML='<path d="M8 5v14l11-7z"/>';
-    title.textContent=T('Tap to listen','点击收听');
-    rings.forEach(r=>r.classList.remove('pl'));
-    core.style.background='var(--green)';core.style.boxShadow='0 0 26px rgba(74,222,128,0.4)';
-    stopAudio();
+    stopCriticalLoop();
+    icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+    title.textContent = 'Enable Alerts';
+    sub.textContent = 'Tap to activate — silent until event detected';
+    rings.forEach(r => r.classList.remove('pl'));
+    core.style.background = 'var(--green)';
+    core.style.boxShadow = '0 0 26px rgba(74,222,128,0.4)';
+    dot.style.background = 'var(--text-muted)';
+    dot.style.boxShadow = 'none';
+    statusText.textContent = 'Alerts disabled';
+    statusText.style.color = 'var(--text-dim)';
   }
 }
-function startAudio(){
-  try{
-    actx=new(window.AudioContext||window.webkitAudioContext)();
-    osc2=actx.createOscillator();gn=actx.createGain();
-    osc2.connect(gn);gn.connect(actx.destination);
-    osc2.type='sine';osc2.frequency.setValueAtTime(400,actx.currentTime);
-    gn.gain.setValueAtTime(0.26,actx.currentTime);osc2.start();
-    let t=0;
-    aInt=setInterval(()=>{
-      if(!playing)return;t+=0.1;
-      const base=curState==='danger'?560:curState==='warn'?300:250;
-      const jit=curState==='danger'?170:35;
-      osc2.frequency.setTargetAtTime(base+Math.sin(t)*75+Math.random()*jit,actx.currentTime,0.08);
-    },100);
-  } catch(e){document.getElementById('aTitle').textContent=T('Audio unavailable','不支持音频');}
+
+function ensureAudioContext() {
+  if (!actx) {
+    try { actx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e) { return false; }
+  }
+  if (actx.state === 'suspended') actx.resume();
+  return true;
 }
-function stopAudio(){
-  if(osc2){try{osc2.stop();}catch(e){}osc2=null;}
-  if(actx){try{actx.close();}catch(e){}actx=null;}
-  if(aInt){clearInterval(aInt);aInt=null;}
+
+function playTone(freq, type, duration, startTime, gainVal) {
+  if (!ensureAudioContext()) return;
+  const osc = actx.createOscillator();
+  const g = actx.createGain();
+  osc.connect(g); g.connect(actx.destination);
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, startTime);
+  g.gain.setValueAtTime(0, startTime);
+  g.gain.linearRampToValueAtTime(gainVal * alertVolume, startTime + 0.02);
+  g.gain.setValueAtTime(gainVal * alertVolume, startTime + duration - 0.05);
+  g.gain.linearRampToValueAtTime(0, startTime + duration);
+  osc.start(startTime);
+  osc.stop(startTime + duration);
 }
-function selMethod(el){
-  document.querySelectorAll('.mcard').forEach(c=>c.classList.remove('on'));
-  el.classList.add('on');updASub();
+
+function playWarningSound() {
+  if (!ensureAudioContext()) return;
+  const t = actx.currentTime;
+  // 3 short sine tones at 520 Hz, 0.18s each, 0.35s apart
+  for (let i = 0; i < 3; i++) playTone(520, 'sine', 0.18, t + i * 0.35, 0.5);
 }
+
+function playCriticalSound() {
+  if (!ensureAudioContext()) return;
+  const t = actx.currentTime;
+  // Dual tone: 880 then 660, square wave, more urgent
+  playTone(880, 'square', 0.22, t, 0.35);
+  playTone(660, 'square', 0.22, t + 0.28, 0.35);
+}
+
+function playReleasedSound() {
+  if (!ensureAudioContext()) return;
+  const t = actx.currentTime;
+  const osc = actx.createOscillator();
+  const g = actx.createGain();
+  osc.connect(g); g.connect(actx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(440, t);
+  osc.frequency.linearRampToValueAtTime(220, t + 0.8);
+  g.gain.setValueAtTime(0.4 * alertVolume, t);
+  g.gain.linearRampToValueAtTime(0, t + 0.8);
+  osc.start(t); osc.stop(t + 0.8);
+}
+
+function startCriticalLoop() {
+  stopCriticalLoop();
+  playCriticalSound();
+  criticalLoopTimer = setInterval(playCriticalSound, 2000);
+  const statusText = document.getElementById('audioStatusText');
+  if (statusText) { statusText.textContent = '🚨 Critical alert sounding'; statusText.style.color = 'var(--red)'; }
+}
+
+function stopCriticalLoop() {
+  if (criticalLoopTimer) { clearInterval(criticalLoopTimer); criticalLoopTimer = null; }
+}
+
+function triggerAlertSound(level) {
+  if (!alertsEnabled) return;
+  const statusText = document.getElementById('audioStatusText');
+  if (level === 'warning') {
+    playWarningSound();
+    if (statusText) { statusText.textContent = '⚠️ Warning alert triggered'; statusText.style.color = 'var(--yellow)'; }
+  } else if (level === 'critical') {
+    startCriticalLoop();
+  } else if (level === 'released') {
+    stopCriticalLoop();
+    playReleasedSound();
+    if (statusText) { statusText.textContent = 'Listening — no active alerts'; statusText.style.color = 'var(--green)'; }
+  }
+}
+
+// Test buttons
+function testWarningSound() { if (!ensureAudioContext()) { alert('Tap Enable Alerts first'); return; } playWarningSound(); }
+function testCriticalSound() { if (!ensureAudioContext()) { alert('Tap Enable Alerts first'); return; } playCriticalSound(); }
+function testReleasedSound() { if (!ensureAudioContext()) { alert('Tap Enable Alerts first'); return; } playReleasedSound(); }
 
 // MODAL DATA
 const MD={
   pest:{
-    en:{t:'🪲 Pest Activity Detected',s:'Plant C-02 · Tomato · Greenhouse A',
-      r:[['Confidence','81%','var(--red)'],['Duration','23 min (ongoing)',''],['Spike rate','7.2 / min',''],['Signal SNR','18 dB — Degraded','var(--yellow)'],['Suggested action','Inspect leaf undersides','']]},
-    zh:{t:'🪲 检测到虫害活动',s:'植株 C-02 · 番茄 · A温室',
-      r:[['置信度','81%','var(--red)'],['持续时间','23分钟（持续中）',''],['尖峰速率','7.2次/分钟',''],['信号质量','18 dB — 已降级','var(--yellow)'],['建议操作','检查叶片背面','']]}
+    en:{t:'🪲 Anomaly Detected',s:'Sensor 25072519 · Choy Sum · 50% water group',
+      r:[['Type','Unusual spike pattern','var(--red)'],['Signal SNR','Degraded','var(--yellow)'],['Suggested action','Inspect plant physically','']]},
+    zh:{t:'🪲 检测到异常',s:'传感器 25072519 · 菜心 · 50% 浇水组',
+      r:[['类型','异常尖峰模式','var(--red)'],['信号质量','已降级','var(--yellow)'],['建议操作','实地检查植株','']]}
   },
   water:{
-    en:{t:'💧 Water Stress Detected',s:'Plant A-05 · Pepper · Greenhouse A',
-      r:[['Confidence','67%','var(--yellow)'],['Duration','1h 12m (ongoing)',''],['Signal trend','Amplitude declining',''],['Last watered','18h ago','var(--yellow)'],['Suggested action','Water immediately','']]},
-    zh:{t:'💧 检测到缺水胁迫',s:'植株 A-05 · 辣椒 · A温室',
-      r:[['置信度','67%','var(--yellow)'],['持续时间','1小时12分钟（持续中）',''],['信号趋势','幅值持续下降',''],['上次浇水','18小时前','var(--yellow)'],['建议操作','立即浇水','']]}
+    en:{t:'💧 Water Stress Detected',s:'Sensor 25072519 · Choy Sum · 50% water group',
+      r:[['WATER_STATUS','<40% — stress zone','var(--yellow)'],['Signal trend','mV slope declining',''],['Group','Water stress (50%)',''],['Action','Check plant immediately','var(--yellow)']]},
+    zh:{t:'💧 检测到缺水胁迫',s:'传感器 25072519 · 菜心 · 50% 浇水组',
+      r:[['水分指数','<40% — 胁迫区间','var(--yellow)'],['信号趋势','mV斜率下降',''],['分组','缺水处理（50%）',''],['建议','立即检查植株','var(--yellow)']]}
   }
 };
 
@@ -668,6 +698,9 @@ function openModal(type){
 }
 function closeModal(e){
   if(!e||e.target===document.getElementById('mOverlay'))document.getElementById('mOverlay').classList.remove('op');
+  stopCriticalLoop();
+  const statusText = document.getElementById('audioStatusText');
+  if (statusText && alertsEnabled) { statusText.textContent = 'Listening — no active alerts'; statusText.style.color = 'var(--green)'; }
 }
 function markFalse(){
   document.getElementById('mOverlay').classList.remove('op');
@@ -679,12 +712,442 @@ function markFalse(){
 }
 function setT(btn){document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');}
 
+// ════════ CSV DATA ENGINE ════════
+const csvData = { raw: null, water: null, activity: null };
+let replayIdx = 0;
+let replayPlaying = false;
+let replayTimer = null;
+const REPLAY_SPEED_MS = 500; // 500ms per step (each step = 30min of real data)
+
+// ════════ EVENT DETECTION ENGINE ════════
+const SLOPE_WINDOW = 6;          // points (3h)
+const SLOPE_THRESHOLD = -0.8;    // mV/step — warning threshold
+const DEBOUNCE_CONFIRM = 3;      // consecutive windows needed to trigger
+const DEBOUNCE_COOLDOWN = 30;    // steps (~15h) before re-alerting same level
+const RELEASE_CONFIRM = 3;       // consecutive windows to release alert
+
+let detectionState = {
+  alertLevel: 'none',            // 'none' | 'warning' | 'critical'
+  confirmCount: 0,               // consecutive windows meeting condition
+  releaseCount: 0,               // consecutive windows meeting release condition
+  lastAlertIdx: -999,            // idx when last alert fired
+  lastAlertLevel: 'none'
+};
+
+function computeSlope(idx) {
+  if (!csvData.raw || idx < SLOPE_WINDOW) return null;
+  const window = [];
+  for (let i = idx - SLOPE_WINDOW; i < idx; i++) {
+    const v = getMVValue(i);
+    if (v === null) return null;
+    window.push(v);
+  }
+  // Linear regression slope
+  const n = window.length;
+  const sumX = n*(n-1)/2;
+  const sumX2 = (n-1)*n*(2*n-1)/6;
+  const sumY = window.reduce((a,b)=>a+b,0);
+  const sumXY = window.reduce((s,v,i)=>s+i*v,0);
+  return (n*sumXY - sumX*sumY) / (n*sumX2 - sumX*sumX);
+}
+
+function runEventDetection(idx) {
+  const slope = computeSlope(idx);
+  const ws = getWaterValue(idx);
+  if (slope === null) return;
+
+  const ds = detectionState;
+  const isSlopeWarn = slope < SLOPE_THRESHOLD;
+  const isCriticalWS = ws !== null && ws < 30;
+  const inCooldown = (idx - ds.lastAlertIdx) < DEBOUNCE_COOLDOWN;
+
+  // Check release condition
+  if (ds.alertLevel !== 'none') {
+    const releasing = slope > 0 || (ws !== null && ws >= 40);
+    if (releasing) {
+      ds.releaseCount++;
+      if (ds.releaseCount >= RELEASE_CONFIRM) {
+        ds.alertLevel = 'none';
+        ds.confirmCount = 0;
+        ds.releaseCount = 0;
+        fireAlertEvent('released', idx, slope, ws);
+      }
+    } else {
+      ds.releaseCount = 0;
+    }
+    return;
+  }
+
+  // Check trigger condition
+  if (isSlopeWarn) {
+    ds.confirmCount++;
+    ds.releaseCount = 0;
+    if (ds.confirmCount >= DEBOUNCE_CONFIRM && !inCooldown) {
+      const level = isCriticalWS ? 'critical' : 'warning';
+      if (level !== ds.lastAlertLevel || !inCooldown) {
+        ds.alertLevel = level;
+        ds.lastAlertIdx = idx;
+        ds.lastAlertLevel = level;
+        ds.confirmCount = 0;
+        fireAlertEvent(level, idx, slope, ws);
+      }
+    }
+  } else {
+    ds.confirmCount = 0;
+  }
+}
+
+function fireAlertEvent(level, idx, slope, ws) {
+  const ts = getTimestamp(idx);
+  const slopeStr = slope.toFixed(3);
+  const wsStr = ws !== null ? ws.toFixed(1)+'%' : '—';
+
+  // Trigger alert sound
+  triggerAlertSound(level);
+
+  // Stop critical loop on confirm
+  if (level === 'released') stopCriticalLoop();
+
+  // Log to history
+  addEventToHistory(level, ts, slopeStr, wsStr);
+
+  // Update banner
+  const banner = document.getElementById('abanner');
+  if (level === 'critical') {
+    curState = 'danger';
+    banner.style.display = 'flex';
+    banner.style.borderColor = 'var(--red)';
+    banner.innerHTML = `<div class="aicon">🚨</div><div><div class="atitle">Critical water stress detected</div><div class="asub">Slope ${slopeStr} mV/step · WS ${wsStr} · ${ts}</div></div><button class="abtn" onclick="openModal('water')" style="flex-shrink:0">View</button>`;
+  } else if (level === 'warning') {
+    curState = 'warn';
+    banner.style.display = 'flex';
+    banner.style.borderColor = 'var(--yellow)';
+    banner.innerHTML = `<div class="aicon">⚠️</div><div><div class="atitle" style="color:var(--yellow)">Water stress warning</div><div class="asub">Slope ${slopeStr} mV/step · WS ${wsStr} · ${ts}</div></div>`;
+  } else if (level === 'released') {
+    curState = 'ok';
+    banner.style.display = 'none';
+  }
+}
+
+function addEventToHistory(level, ts, slope, ws) {
+  const list = document.getElementById('elist');
+  if (!list) return;
+  const cls = level==='critical'?'er':level==='warning'?'ey':'eg';
+  const dot = level==='critical'?'dr':level==='warning'?'dy':'dg';
+  const conf = level==='critical'?'ecr':level==='warning'?'ecy':'ecg';
+  const icon = level==='critical'?'🚨':level==='warning'?'⚠️':'✅';
+  const label = level==='critical'?'Critical stress':level==='warning'?'Warning stress':'Stress released';
+  const item = document.createElement('div');
+  item.className = `eitem ${cls}`;
+  item.innerHTML = `<div class="edot ${dot}"></div><div class="ebody"><div class="etit">${icon} ${label} — 25072519</div><div class="emeta">${ts} · slope ${slope}</div></div><div class="econf ${conf}">${ws}</div>`;
+  list.insertBefore(item, list.firstChild);
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur.trim());
+  return result;
+}
+function parseCSV(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const vals = parseCSVLine(line);
+    const obj = {};
+    headers.forEach((h,i) => obj[h] = vals[i] || '');
+    return obj;
+  });
+}
+
+function loadCSV(input, type) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const rows = parseCSV(e.target.result);
+    csvData[type] = rows;
+    const labels = { raw:'RAW_SIGNALS', water:'WATER_STATUS', activity:'PLANT_ACTIVITY' };
+    const txtEl = document.getElementById('lbl'+type.charAt(0).toUpperCase()+type.slice(1)+'Txt');
+    if (txtEl) txtEl.textContent = labels[type] + ' — ' + rows.length + ' rows ✓';
+    checkAllLoaded();
+  };
+  reader.readAsText(file);
+}
+
+function checkAllLoaded() {
+  if (csvData.raw || csvData.water || csvData.activity) {
+    document.getElementById('uploadStatus').style.display = 'block';
+    replayIdx = 0;
+    updateReplayFrame(0);
+    // force banner init
+    const ws = getWaterValue(0);
+    updateOverviewState(ws, 0);
+  }
+}
+
+function getMVValue(idx) {
+  if (!csvData.raw || idx >= csvData.raw.length) return null;
+  const row = csvData.raw[idx];
+  const mv = row.mv || row.metric_value || '';
+  return parseFloat(mv.replace(/[^\d.\-]/g,''));
+}
+
+function getWaterValue(idx) {
+  if (!csvData.water || idx >= csvData.water.length) return null;
+  return parseFloat(csvData.water[idx].metric_value);
+}
+
+function getActivityValue(idx) {
+  if (!csvData.activity || idx >= csvData.activity.length) return null;
+  return parseFloat(csvData.activity[idx].metric_value);
+}
+
+function getTimestamp(idx) {
+  const src = csvData.raw || csvData.water || csvData.activity;
+  if (!src || idx >= src.length) return '—';
+  return src[idx].time || '—';
+}
+
+function totalFrames() {
+  const src = csvData.raw || csvData.water || csvData.activity;
+  return src ? src.length : 0;
+}
+
+function updateReplayFrame(idx) {
+  const total = totalFrames();
+  if (total === 0) return;
+  const pct = (idx / (total - 1)) * 100;
+  document.getElementById('replayProgress').style.width = pct + '%';
+  document.getElementById('replayTime').textContent = getTimestamp(idx);
+
+  // Derive state from WATER_STATUS
+  const ws = getWaterValue(idx);
+  let newState = 'ok';
+  if (ws !== null) {
+    if (ws < 30) newState = 'danger';
+    else if (ws < 40) newState = 'warn';
+    else newState = 'ok';
+  }
+  curState = newState;
+  updateOverviewState(ws, idx);
+
+  // Update signal stats
+  const mv = getMVValue(idx);
+  const act = getActivityValue(idx);
+  if (mv !== null) {
+    const stV = document.getElementById('stV');
+    if (stV) {
+      stV.textContent = (mv >= 0 ? '+' : '') + mv.toFixed(1);
+      stV.className = 'stv' + (newState==='danger'?' sv-d':newState==='warn'?' sv-w':'');
+    }
+  }
+  if (ws !== null) {
+    const stS = document.getElementById('stS');
+    if (stS) { stS.textContent = ws.toFixed(1) + '%'; }
+  }
+  if (act !== null) {
+    const stQ = document.getElementById('stQ');
+    if (stQ) { stQ.textContent = act.toFixed(1); }
+  }
+
+  // Feed mV into waveform buffer
+  if (mv !== null) pushWaveValue(mv);
+
+  // Run event detection
+  runEventDetection(idx);
+
+}
+
+function updateOverviewState(ws, idx) {
+  const banner = document.getElementById('abanner');
+  const wsStr = ws !== null ? ws.toFixed(1)+'%' : '—';
+  const ts = getTimestamp(idx);
+
+  // Update plant card
+  const card = document.getElementById('card-25072519');
+  const cardIcon = document.getElementById('card-icon');
+  const cardStatus = document.getElementById('card-status');
+  const cardDur = document.getElementById('card-dur');
+  const cardFill = document.getElementById('card-fill');
+  const cardGlow = document.getElementById('card-glow');
+
+  if (card) {
+    if (curState === 'danger') {
+      card.className = 'scard cr'; card.style.gridColumn = '1/-1';
+      cardIcon.textContent = '🚨'; 
+      cardStatus.textContent = 'Critical stress'; cardStatus.className = 'cst cr-t';
+      cardDur.textContent = 'WS ' + wsStr;
+      cardFill.style.width = Math.max(0, ws||0) + '%'; cardFill.className = 'cfill fr';
+      cardGlow.className = 'cglow gr';
+    } else if (curState === 'warn') {
+      card.className = 'scard cy'; card.style.gridColumn = '1/-1';
+      cardIcon.textContent = '💧';
+      cardStatus.textContent = 'Water stress warning'; cardStatus.className = 'cst cy-t';
+      cardDur.textContent = 'WS ' + wsStr;
+      cardFill.style.width = Math.max(0, ws||0) + '%'; cardFill.className = 'cfill fy';
+      cardGlow.className = 'cglow gy';
+    } else {
+      card.className = 'scard cg'; card.style.gridColumn = '1/-1';
+      cardIcon.textContent = ws === null ? '⏳' : '🌿';
+      cardStatus.textContent = ws === null ? 'Awaiting data' : 'Normal'; cardStatus.className = 'cst cg-t';
+      cardDur.textContent = ws !== null ? 'WS ' + wsStr : '—';
+      cardFill.style.width = Math.min(100, ws||0) + '%'; cardFill.className = 'cfill fg';
+      cardGlow.className = 'cglow gg';
+    }
+  }
+
+  // Update summary chips
+  const h = document.getElementById('sumHealthy');
+  const w = document.getElementById('sumWarn');
+  const c = document.getElementById('sumCritical');
+  if (h && w && c) {
+    if (ws === null) { h.textContent='—'; w.textContent='—'; c.textContent='—'; }
+    else if (curState === 'danger') { h.textContent='0'; w.textContent='0'; c.textContent='1'; }
+    else if (curState === 'warn')   { h.textContent='0'; w.textContent='1'; c.textContent='0'; }
+    else                            { h.textContent='1'; w.textContent='0'; c.textContent='0'; }
+  }
+
+  // Update SNR panel with mV std as proxy
+  const snrVal = document.getElementById('snrVal');
+  const snrFill = document.getElementById('snrFill');
+  if (snrVal && snrFill && csvData.raw && idx >= 6) {
+    const recent = [];
+    for (let i = Math.max(0,idx-12); i <= idx; i++) { const v = getMVValue(i); if(v!==null) recent.push(v); }
+    if (recent.length > 1) {
+      const mean = recent.reduce((a,b)=>a+b,0)/recent.length;
+      const std = Math.sqrt(recent.reduce((s,v)=>s+(v-mean)**2,0)/recent.length);
+      const snr = std > 0 ? Math.min(50, 20*Math.log10(Math.abs(mean||1)/std)).toFixed(1) : '—';
+      const pct = Math.min(100, Math.max(0, parseFloat(snr)||0) * 2);
+      snrVal.textContent = snr + ' dB';
+      snrVal.style.color = pct > 60 ? 'var(--green)' : pct > 30 ? 'var(--yellow)' : 'var(--red)';
+      snrFill.style.width = pct + '%';
+    }
+  }
+
+  // Update banner
+  if (curState === 'danger') {
+    banner.style.display = 'flex';
+    banner.style.borderColor = 'var(--red)';
+    banner.innerHTML = `<div class="aicon">🚨</div><div><div class="atitle">Critical water stress — 25072519</div><div class="asub">WS ${wsStr} · ${ts}</div></div><button class="abtn" onclick="openModal('water')" style="flex-shrink:0">View</button>`;
+  } else if (curState === 'warn') {
+    banner.style.display = 'flex';
+    banner.style.borderColor = 'var(--yellow)';
+    banner.innerHTML = `<div class="aicon">⚠️</div><div><div class="atitle" style="color:var(--yellow)">Water stress warning — 25072519</div><div class="asub">WS ${wsStr} · ${ts}</div></div>`;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+function toggleReplay() {
+  replayPlaying = !replayPlaying;
+  const btn = document.getElementById('replayBtn');
+  if (replayPlaying) {
+    btn.textContent = '⏸ Pause';
+    stepReplay();
+  } else {
+    btn.textContent = '▶ Play';
+    if (replayTimer) clearTimeout(replayTimer);
+  }
+}
+
+function stepReplay() {
+  if (!replayPlaying) return;
+  const total = totalFrames();
+  if (replayIdx >= total - 1) {
+    replayPlaying = false;
+    document.getElementById('replayBtn').textContent = '▶ Play';
+    return;
+  }
+  replayIdx++;
+  updateReplayFrame(replayIdx);
+  replayTimer = setTimeout(stepReplay, REPLAY_SPEED_MS);
+}
+
+function resetReplay() {
+  replayPlaying = false;
+  if (replayTimer) clearTimeout(replayTimer);
+  replayIdx = 0;
+  document.getElementById('replayBtn').textContent = '▶ Play';
+  document.getElementById('replayProgress').style.width = '0%';
+  if (totalFrames() > 0) updateReplayFrame(0);
+  waveBuffer = [];
+  detectionState = { alertLevel:'none', confirmCount:0, releaseCount:0, lastAlertIdx:-999, lastAlertLevel:'none' };
+
+  // Reset plant card
+  const icon = document.getElementById('card-icon');
+  const status = document.getElementById('card-status');
+  const dur = document.getElementById('card-dur');
+  const fill = document.getElementById('card-fill');
+  const card = document.getElementById('card-25072519');
+  if (card) { card.className = 'scard cg'; card.style.gridColumn = '1/-1'; }
+  if (icon) icon.textContent = '🌿';
+  if (status) { status.className = 'cst cg-t'; status.textContent = 'Awaiting data'; }
+  if (dur) dur.textContent = '—';
+  if (fill) { fill.style.width = '0%'; fill.className = 'cfill fg'; }
+  ['sumHealthy','sumWarn','sumCritical'].forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '—'; });
+
+  // Reset history
+  const elistEl = document.getElementById('elist');
+  if (elistEl) elistEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:.75rem" id="historyEmpty">No events yet — load CSV and press Play</div>';
+
+  // Reset banner
+  const banner = document.getElementById('abanner');
+  if (banner) { banner.style.display = 'none'; banner.innerHTML = ''; }
+}
+
+// ════════ REAL-DATA WAVEFORM ════════
+let waveBuffer = [];
+const WAVE_BUFFER_SIZE = 120;
+
+function pushWaveValue(mv) {
+  waveBuffer.push(mv);
+  if (waveBuffer.length > WAVE_BUFFER_SIZE) waveBuffer.shift();
+}
+
+function drawWaveFromBuffer(ctx, w, h) {
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle='#0d140d'; ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle='#182818'; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){ctx.beginPath();ctx.moveTo(0,i*h/4);ctx.lineTo(w,i*h/4);ctx.stroke();}
+
+  if (waveBuffer.length < 2) return;
+  const min = Math.min(...waveBuffer);
+  const max = Math.max(...waveBuffer);
+  const range = max - min || 1;
+  const pad = h * 0.1;
+
+  const col = curState==='danger'?'#f87171':curState==='warn'?'#fbbf24':'#4ade80';
+  ctx.strokeStyle=col; ctx.lineWidth=1.8; ctx.shadowBlur=5; ctx.shadowColor=col;
+  ctx.beginPath();
+  waveBuffer.forEach((v, i) => {
+    const x = (i / (WAVE_BUFFER_SIZE - 1)) * w;
+    const y = h - pad - ((v - min) / range) * (h - 2*pad);
+    i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.stroke(); ctx.shadowBlur=0;
+}
+
 window.addEventListener('load',()=>{setTimeout(initWave,80);});
 window.addEventListener('resize',()=>{
   if(document.getElementById('page-signal').classList.contains('active')){
     if(rafId)cancelAnimationFrame(rafId);initWave();if(role==='agro')drawFFT();
   }
 });
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
